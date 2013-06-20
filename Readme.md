@@ -241,6 +241,14 @@ require 'dxruby'
 
 In Ruby 1.9, `require 'rubygems'` is not necessary.
 
+Virtual filesystem support
+--------------------------
+Optional support is available on Linux for mounting DNAnexus Platform projects as virtual filesystems.
+
+On Ubuntu 12.04, use `apt-get install python-fuse python-pyxattr` to install the dependencies required for this.
+
+See TODO for more information.
+
 Reporting Bugs
 --------------
 Please use [GitHub](https://github.com/dnanexus/dx-toolkit/issues) to report bugs, post suggestions, or send us pull requests.
