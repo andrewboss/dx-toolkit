@@ -376,6 +376,10 @@ def resolve_path(path, expected=None, expected_classes=None, multi_projects=Fals
 
     '''
 
+    if '_DX_FUSE' in os.environ:
+        import xattr
+        path = xattr.get(path, "project") + ":" + xattr.get(path, "id")
+
     if path == '' and not allow_empty_string:
         raise ResolutionError('Error: Cannot parse ""; expected the path to be a non-empty string')
     try:
