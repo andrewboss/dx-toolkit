@@ -243,9 +243,12 @@ In Ruby 1.9, `require 'rubygems'` is not necessary.
 
 Virtual filesystem support
 --------------------------
-Optional support is available on Linux for mounting DNAnexus Platform projects as virtual filesystems.
+Optional support is available for mounting DNAnexus Platform projects as virtual filesystems. Install the following dependencies:
 
-On Ubuntu 12.04, use `apt-get install python-fuse python-pyxattr` to install the dependencies required for this.
+Platform     | Dependency
+-------------|-----------
+Ubuntu 12.04 | `apt-get install libfuse2`
+OS X         | [Fuse for OS X](http://osxfuse.github.io/)
 
 See TODO for more information.
 
