@@ -141,7 +141,7 @@ class DXFS(LoggingMixIn, Operations):
 
         print "Populated", len(folders), "folders"
         print "Populating data objects..."
-        for i in dxpy.search.find_data_objects(project=dxpy.WORKSPACE_ID, describe=True):
+        for i in dxpy.search.find_data_objects(project=self.project_id, describe=True):
             dataobject = i["describe"]
             dataobject["folder"] = str(dataobject["folder"])
             dataobject["name"] = str(dataobject["name"])
@@ -452,12 +452,14 @@ class DXFS(LoggingMixIn, Operations):
 
 parser = argparse.ArgumentParser(description="DNAnexus FUSE driver")
 parser.add_argument("mountpoint", help="Directory to mount the filesystem on")
-parser.add_argument("project_id", help="DNAnexus project ID to mount", default=dxpy.WORKSPACE_ID, nargs='?')
+parser.add_argument("--project-id", help="DNAnexus project ID to mount", default=dxpy.WORKSPACE_ID, nargs='?')
+parser.add_argument("--debug", action='store_true')
+parser.add_argument("--foreground", action='store_true')
 args = parser.parse_args()
 
-# redirect stdout to a log (unbuffered)
-#sys.stdout = open('dxfs.log', 'a', 0)
-#sys.stderr = open('dxfs.err.log', 'a', 0)
+if not args.debug:
+    sys.stdout = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, 'w')
 
 logging.getLogger().setLevel(logging.DEBUG)
-fuse = FUSE(DXFS(project_id=args.project_id), args.mountpoint, foreground=True)
+fuse = FUSE(DXFS(project_id=args.project_id), args.mountpoint, foreground=args.foreground)
