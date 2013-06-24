@@ -124,6 +124,7 @@ class DXInode(object):
 
 class DXFS(LoggingMixIn, Operations):
     def __init__(self, project_id):
+        self.fd = 0
         self.uid = os.getuid()
         self.gid = os.getgid()
         self.project_id = project_id
@@ -208,8 +209,8 @@ class DXFS(LoggingMixIn, Operations):
         #                         st_size=0, st_ctime=time(), st_mtime=time(),
         #                         st_atime=time())
 
-        # self.fd += 1
-        # return self.fd
+        self.fd += 1
+        return self.fd
 
     def getattr(self, path, fh=None):
         print 'getattr path:%s' % path

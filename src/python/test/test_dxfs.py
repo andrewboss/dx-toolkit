@@ -23,47 +23,72 @@ from dxpy_testutil import DXTestCase
 
 import dxpy
 
-class TestDXFS(DXTestCase):
-    @unittest.skipIf('DXTEST_FUSE' not in os.environ,
-                     'skipping test that would mount FUSE filesystems')
-    def test_dxfs_operations(self):
-        project_handle = dxpy.DXProject(self.project)
+@unittest.skipIf('DXTEST_FUSE' not in os.environ,
+                 'skipping tests that would mount FUSE filesystems')
+class TestDXFS(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        proj_name = u"dxclient_test_pröject"
+        cls.project_id = subprocess.check_output(u"dx new project '{p}' --brief".format(p=proj_name), shell=True).strip()
+        os.environ["DX_PROJECT_CONTEXT_ID"] = cls.project_id
+        cls.project = dxpy.DXProject(cls.project_id)
+        if 'DX_CLI_WD' in os.environ:
+            del os.environ['DX_CLI_WD']
+        dxpy._initialize(suppress_warning=True)
+
         subprocess.check_call(['dx', 'mkdir', 'foo'])
         subprocess.check_call(['dx', 'mkdir', 'bar'])
-        #subprocess.check_call(['dx', 'mkdir', '-p', '/bar/baz'])
         dxpy.upload_local_file(__file__, wait_on_close=True)
-        
-        mountpoint = tempfile.mkdtemp()
-        fuse_driver = subprocess.Popen(['dx-mount', mountpoint])
-        self.assertEqual(fuse_driver.poll(), None)
+
+        cls.mountpoint = tempfile.mkdtemp()
+        cls.fuse_driver = subprocess.Popen(['dx-mount', cls.mountpoint, '--foreground'])
         time.sleep(1)
-        self.assertEqual(set(os.listdir(mountpoint)), set(['foo', 'bar', os.path.basename(__file__)]))
+        assert(cls.fuse_driver.poll() == None)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fuse_driver.terminate()
+        try:
+            subprocess.check_call(u"dx rmproject --yes {p}".format(p=cls.project_id), shell=True)
+        except:
+            pass
+
+    def test_dxfs_operations(self):
+        # FIXME: Make the mount live or add command to refresh it with remote changes
+        #subprocess.check_call(['dx', 'mkdir', 'foo'])
+        #subprocess.check_call(['dx', 'mkdir', 'bar'])
+        #subprocess.check_call(['dx', 'mkdir', '-p', '/bar/baz'])
+
+        self.assertEqual(set(os.listdir(self.mountpoint)), set(['foo', 'bar', os.path.basename(__file__)]))
         
         # Reading
-        self.assertEqual(open(__file__).read(), open(os.path.join(mountpoint, __file__)).read())
+        self.assertEqual(open(__file__).read(), open(os.path.join(self.mountpoint, __file__)).read())
         
         # Moving
-        shutil.move(os.path.join(mountpoint, __file__), os.path.join(mountpoint, __file__+"2"))
-        self.assertEqual(set(os.listdir(mountpoint)), set(['foo', 'bar', os.path.basename(__file__+"2")]))
-        shutil.move(os.path.join(mountpoint, __file__+"2"), os.path.join(mountpoint, "foo"))
-        self.assertEqual(set(os.listdir(os.path.join(mountpoint, 'foo'))), set([os.path.basename(__file__+"2")]))
-        folder_listing = project_handle.list_folder('/foo')
+        shutil.move(os.path.join(self.mountpoint, __file__), os.path.join(self.mountpoint, __file__+"2"))
+        self.assertEqual(set(os.listdir(self.mountpoint)), set(['foo', 'bar', os.path.basename(__file__+"2")]))
+        shutil.move(os.path.join(self.mountpoint, __file__+"2"), os.path.join(self.mountpoint, "foo"))
+        self.assertEqual(set(os.listdir(os.path.join(self.mountpoint, 'foo'))), set([os.path.basename(__file__+"2")]))
+        folder_listing = self.project.list_folder('/foo')
         self.assertEqual(len(folder_listing['folders']), 0)
         self.assertEqual(len(folder_listing['objects']), 1)
         self.assertEqual(dxpy.get_handler(folder_listing['objects'][0]['id']).name, os.path.basename(__file__+"2"))
-        self.assertEqual(open(__file__).read(), open(os.path.join(mountpoint, 'foo', __file__+"2")).read())
-        
-        # Making directories
-        os.mkdir(os.path.join(mountpoint, 'xyz'))
-        self.assertIn('/xyz', project_handle.list_folder('/')['folders'])
-        os.mkdir(os.path.join(mountpoint, 'xyz', 'abc'))
-        self.assertIn('/xyz/abc', project_handle.list_folder('/xyz')['folders'])
-        os.rmdir(os.path.join(mountpoint, 'xyz', 'abc'))
-        self.assertNotIn('/xyz/abc', project_handle.list_folder('/xyz')['folders'])
-        os.rmdir(os.path.join(mountpoint, 'xyz'))
-        self.assertNotIn('/xyz', project_handle.list_folder('/')['folders'])
-        
-        fuse_driver.terminate()
+        self.assertEqual(open(__file__).read(), open(os.path.join(self.mountpoint, 'foo', __file__+"2")).read())
+
+    def test_dxfs_mkdir(self):
+        os.mkdir(os.path.join(self.mountpoint, 'xyz'))
+        self.assertIn('/xyz', self.project.list_folder('/')['folders'])
+        os.mkdir(os.path.join(self.mountpoint, 'xyz', 'abc'))
+        self.assertIn('/xyz/abc', self.project.list_folder('/xyz')['folders'])
+        os.rmdir(os.path.join(self.mountpoint, 'xyz', 'abc'))
+        self.assertNotIn('/xyz/abc', self.project.list_folder('/xyz')['folders'])
+        os.rmdir(os.path.join(self.mountpoint, 'xyz'))
+        self.assertNotIn('/xyz', self.project.list_folder('/')['folders'])
+
+    def test_dxfs_write(self):
+        with open(os.path.join(self.mountpoint, 'foo', 'f1'), 'w') as fh:
+            fh.write('0123456789ABCDEF'*1024*1024)
+
 
 if __name__ == '__main__':
     unittest.main()
