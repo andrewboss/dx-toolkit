@@ -56,6 +56,10 @@ class DXInode(object):
             self._handler = dxpy.get_handler(self.dxid)
         return self._handler
 
+    @handler.setter
+    def handler(self, h):
+        self._handler = h
+
     def now(self):
         self.atime = time()   # time of last access
         self.mtime = self.atime    # time of last modification
@@ -97,9 +101,11 @@ class DXInode(object):
         return match
 
     def read(self, offset, length):
-        print "Reading from", self.name
+        print "Reading from", self.name, offset, length
         #stat.st_atime = time.now()
         if self.dxid and self.dxid.startswith('file'):
+            if self.handler.state != 'closed':
+                self.handler = dxpy.get_handler(self.handler.get_id())
             self.handler.seek(offset)
             return self.handler.read(length)
         else:

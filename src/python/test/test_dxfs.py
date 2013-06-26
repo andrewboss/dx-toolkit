@@ -31,9 +31,8 @@ class TestDXFS(unittest.TestCase):
         proj_name = u"dxclient_test_pröject"
         cls.project_id = subprocess.check_output(u"dx new project '{p}' --brief".format(p=proj_name), shell=True).strip()
         os.environ["DX_PROJECT_CONTEXT_ID"] = cls.project_id
+        os.environ["DX_CLI_WD"] = '/'
         cls.project = dxpy.DXProject(cls.project_id)
-        if 'DX_CLI_WD' in os.environ:
-            del os.environ['DX_CLI_WD']
         dxpy._initialize(suppress_warning=True)
 
         subprocess.check_call(['dx', 'mkdir', 'foo'])
@@ -41,7 +40,9 @@ class TestDXFS(unittest.TestCase):
         dxpy.upload_local_file(__file__, wait_on_close=True)
 
         cls.mountpoint = tempfile.mkdtemp()
-        cls.fuse_driver = subprocess.Popen(['dx-mount', cls.mountpoint, '--foreground'])
+        args = ['dx-mount', cls.mountpoint, '--foreground']
+        args.append('--debug')
+        cls.fuse_driver = subprocess.Popen(args)
         time.sleep(1)
         assert(cls.fuse_driver.poll() == None)
 
@@ -86,9 +87,18 @@ class TestDXFS(unittest.TestCase):
         self.assertNotIn('/xyz', self.project.list_folder('/')['folders'])
 
     def test_dxfs_write(self):
-        with open(os.path.join(self.mountpoint, 'foo', 'f1'), 'w') as fh:
-            fh.write('0123456789ABCDEF'*1024*1024)
-
+        filename1 = os.path.join(self.mountpoint, 'foo', 'f1')
+        with open(filename1, 'w') as fh:
+            fh.write('0123456789ABCDEF')
+        subprocess.check_call(['dxfs', 'close', filename1, '--wait'])
+#         time.sleep(5)
+#         id = json.loads(subprocess.check_output("dxfs describe "+filename1+" --json", shell=True))['id']
+#         print id
+#         subprocess.call("echo data; dx cat "+id, shell=True)
+        with open(filename1) as fh:
+            d = fh.read()
+            print len(d)
+            self.assertEqual(d, '0123456789ABCDEF', "File readback failed")
 
 if __name__ == '__main__':
     unittest.main()

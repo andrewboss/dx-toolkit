@@ -2332,8 +2332,12 @@ def find_apps(args):
         err_exit()
 
 def close(args):
+    if '_DX_FUSE' in os.environ:
+        from xattr import xattr
+
     handlers = []
     had_error = False
+
     for path in args.path:
         # Attempt to resolve name
         try:
@@ -2351,7 +2355,10 @@ def close(args):
             for result in entity_results:
                 try:
                     obj = dxpy.get_handler(result['id'], project=project)
-                    obj.close()
+                    if '_DX_FUSE' in os.environ:
+                        xattr(path)['state'] = 'closed'
+                    else:
+                        obj.close()
                     handlers.append(obj)
                 except BaseException as details:
                     print fill(unicode(details))
